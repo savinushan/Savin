@@ -27,6 +27,9 @@ import {
   PhoneMissed,
   Clock,
   Eye,
+  UserPlus,
+  Shield,
+  AlertCircle,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -45,11 +48,13 @@ interface Contact {
   unread: number
   online: boolean
   isFromContacts?: boolean
+  isMutual?: boolean // Both users have each other in contacts
 }
 
 interface Message {
   id: string
   senderId: string
+  senderName: string
   text: string
   timestamp: Date
   status: "sent" | "delivered" | "read"
@@ -74,59 +79,91 @@ interface CallRecord {
   avatar: string
 }
 
-// Simulated contacts from phone book
-const phoneContacts: Contact[] = [
+interface GlobalUser {
+  id: string
+  name: string
+  phone: string
+  online: boolean
+  lastSeen: string
+}
+
+// Simulated global users (everyone who has registered)
+const globalUsers: GlobalUser[] = [
   {
     id: "1",
     name: "Kasun Perera",
     phone: "+94 71 234 5678",
-    lastMessage: "Kohomada machan?",
-    timestamp: "2 min ago",
-    unread: 2,
     online: true,
-    isFromContacts: true,
+    lastSeen: "Online",
   },
   {
     id: "2",
     name: "Nimali Silva",
     phone: "+94 77 987 6543",
-    lastMessage: "Office eka giya da?",
-    timestamp: "1 hour ago",
-    unread: 0,
     online: true,
-    isFromContacts: true,
+    lastSeen: "Online",
   },
   {
     id: "3",
     name: "Chaminda Fernando",
     phone: "+94 70 555 1234",
-    lastMessage: "Match eka balanna one",
-    timestamp: "Yesterday",
-    unread: 1,
     online: false,
-    isFromContacts: true,
+    lastSeen: "2 hours ago",
   },
   {
     id: "4",
     name: "Sanduni Rajapaksa",
     phone: "+94 76 888 9999",
-    lastMessage: "Thanks for the help!",
-    timestamp: "Yesterday",
-    unread: 0,
     online: true,
-    isFromContacts: true,
+    lastSeen: "Online",
   },
   {
     id: "5",
     name: "Pradeep Wickramasinghe",
     phone: "+94 75 111 2222",
-    lastMessage: "See you tomorrow!",
-    timestamp: "2 days ago",
-    unread: 0,
     online: false,
-    isFromContacts: true,
+    lastSeen: "Yesterday",
+  },
+  {
+    id: "6",
+    name: "Tharaka Jayasinghe",
+    phone: "+94 78 111 3333",
+    online: true,
+    lastSeen: "Online",
+  },
+  {
+    id: "7",
+    name: "Malini Rathnayake",
+    phone: "+94 72 444 5555",
+    online: false,
+    lastSeen: "5 minutes ago",
   },
 ]
+
+// Simulated user's contacts (people they have added)
+const userContacts: string[] = ["1", "2", "4"] // User has added Kasun, Nimali, and Sanduni
+
+// Simulated mutual contacts (people who have also added the user back)
+const mutualContacts: string[] = ["1", "2"] // Only Kasun and Nimali have added user back
+
+// Simulated contacts from phone book with messaging permissions
+const phoneContacts: Contact[] = globalUsers
+  .filter((user) => userContacts.includes(user.id))
+  .map((user) => ({
+    id: user.id,
+    name: user.name,
+    phone: user.phone,
+    lastMessage: mutualContacts.includes(user.id)
+      ? user.id === "1"
+        ? "Kohomada machan?"
+        : "Office eka giya da?"
+      : "Add me back to start messaging",
+    timestamp: user.online ? "Online" : user.lastSeen,
+    unread: mutualContacts.includes(user.id) ? (user.id === "1" ? 2 : 0) : 0,
+    online: user.online,
+    isFromContacts: true,
+    isMutual: mutualContacts.includes(user.id),
+  }))
 
 // Simulated status updates
 const statusUpdates: StatusUpdate[] = [
@@ -152,20 +189,6 @@ const statusUpdates: StatusUpdate[] = [
     viewed: true,
     avatar: "NS",
   },
-  {
-    id: "3",
-    name: "Chaminda Fernando",
-    timestamp: "Yesterday",
-    viewed: false,
-    avatar: "CF",
-  },
-  {
-    id: "4",
-    name: "Sanduni Rajapaksa",
-    timestamp: "Yesterday",
-    viewed: true,
-    avatar: "SR",
-  },
 ]
 
 // Simulated call records
@@ -188,32 +211,6 @@ const callRecords: CallRecord[] = [
     duration: "12:45",
     avatar: "NS",
   },
-  {
-    id: "3",
-    name: "Chaminda Fernando",
-    phone: "+94 70 555 1234",
-    type: "missed",
-    timestamp: "Yesterday, 8:20 PM",
-    avatar: "CF",
-  },
-  {
-    id: "4",
-    name: "Sanduni Rajapaksa",
-    phone: "+94 76 888 9999",
-    type: "outgoing",
-    timestamp: "Yesterday, 3:15 PM",
-    duration: "8:12",
-    avatar: "SR",
-  },
-  {
-    id: "5",
-    name: "Pradeep Wickramasinghe",
-    phone: "+94 75 111 2222",
-    type: "incoming",
-    timestamp: "2 days ago",
-    duration: "3:45",
-    avatar: "PW",
-  },
 ]
 
 export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfaceProps) {
@@ -224,6 +221,7 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const [showNewChat, setShowNewChat] = useState(false)
+  const [showAddContact, setShowAddContact] = useState(false)
   const [newChatPhone, setNewChatPhone] = useState("")
   const [newChatName, setNewChatName] = useState("")
 
@@ -249,27 +247,29 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
     scrollToBottom()
   }, [messages])
 
-  useEffect(() => {
-    if (activeTab === "calls" && !activeCall) {
-      const timer = setTimeout(() => {
-        if (activeTab === "calls" && !activeCall) {
-          handleIncomingCall("incoming-1", "Kasun Perera", "KP", "audio")
-        }
-      }, 10000)
-      return () => clearTimeout(timer)
-    }
-  }, [activeTab, activeCall])
-
   const filteredContacts = phoneContacts.filter(
     (contact) => contact.name.toLowerCase().includes(searchQuery.toLowerCase()) || contact.phone.includes(searchQuery),
+  )
+
+  const filteredGlobalUsers = globalUsers.filter(
+    (user) =>
+      !userContacts.includes(user.id) && // Not already in contacts
+      (user.name.toLowerCase().includes(searchQuery.toLowerCase()) || user.phone.includes(searchQuery)),
   )
 
   const sendMessage = () => {
     if (!newMessage.trim() || !selectedContact) return
 
+    // Check if messaging is allowed
+    if (!selectedContact.isMutual) {
+      alert("You can only message contacts who have added you back. Ask them to add your number to their contacts.")
+      return
+    }
+
     const message: Message = {
       id: Date.now().toString(),
       senderId: userPhone,
+      senderName: userName,
       text: newMessage.trim(),
       timestamp: new Date(),
       status: "sent",
@@ -323,6 +323,12 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
     contactAvatar: string,
     callType: "audio" | "video",
   ) => {
+    const contact = phoneContacts.find((c) => c.id === contactId)
+    if (!contact?.isMutual) {
+      alert("You can only call contacts who have added you back.")
+      return
+    }
+
     setActiveCall({
       contactId,
       contactName,
@@ -359,6 +365,31 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
       .toUpperCase()
   }
 
+  const addToContacts = (userId: string) => {
+    const user = globalUsers.find((u) => u.id === userId)
+    if (!user) return
+
+    // Add to user's contacts
+    userContacts.push(userId)
+
+    // Create new contact
+    const newContact: Contact = {
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      lastMessage: "Added to contacts. Ask them to add you back to start messaging.",
+      timestamp: "now",
+      unread: 0,
+      online: user.online,
+      isFromContacts: true,
+      isMutual: false, // They haven't added user back yet
+    }
+
+    phoneContacts.push(newContact)
+    setShowAddContact(false)
+    alert(`${user.name} has been added to your contacts. Ask them to add your number to start messaging.`)
+  }
+
   const validateAndCreateNewChat = () => {
     const digits = newChatPhone.replace(/\D/g, "")
 
@@ -390,22 +421,30 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
         ? "+" + newChatPhone
         : newChatPhone
 
-    const newContact: Contact = {
-      id: Date.now().toString(),
-      name: newChatName.trim(),
-      phone: formattedPhone,
-      lastMessage: "Start a conversation...",
-      timestamp: "now",
-      unread: 0,
-      online: false,
-      isFromContacts: false,
+    // Check if user exists in global users
+    const existingUser = globalUsers.find((u) => u.phone === formattedPhone)
+
+    if (existingUser) {
+      // Add existing user to contacts
+      addToContacts(existingUser.id)
+    } else {
+      // Create new contact for unregistered number
+      const newContact: Contact = {
+        id: Date.now().toString(),
+        name: newChatName.trim(),
+        phone: formattedPhone,
+        lastMessage: "This user hasn't joined Hey yet. Invite them!",
+        timestamp: "now",
+        unread: 0,
+        online: false,
+        isFromContacts: true,
+        isMutual: false,
+      }
+
+      phoneContacts.unshift(newContact)
+      setSelectedContact(newContact)
     }
 
-    // Add to contacts list (you'd normally save this to your backend)
-    phoneContacts.unshift(newContact)
-
-    // Select the new contact
-    setSelectedContact(newContact)
     setShowNewChat(false)
     setNewChatPhone("")
     setNewChatName("")
@@ -439,26 +478,26 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
                   <Avatar className="h-14 w-14 shadow-sm">
                     <AvatarFallback
                       className={`font-bold text-lg ${
-                        contact.isFromContacts
+                        contact.isMutual
                           ? "bg-gradient-to-br from-blue-100 to-purple-100 text-blue-700 dark:from-blue-900 dark:to-purple-900 dark:text-blue-300"
-                          : "bg-gradient-to-br from-green-100 to-emerald-100 text-green-700 dark:from-green-900 dark:to-emerald-900 dark:text-green-300"
+                          : "bg-gradient-to-br from-orange-100 to-red-100 text-orange-700 dark:from-orange-900 dark:to-red-900 dark:text-orange-300"
                       }`}
                     >
                       {getInitials(contact.name)}
                     </AvatarFallback>
                   </Avatar>
-                  {contact.online && (
+                  {contact.online && contact.isMutual && (
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-3 border-white dark:border-gray-900 shadow-sm"></div>
                   )}
                   <div
                     className={`absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center shadow-sm ${
-                      contact.isFromContacts ? "bg-blue-500" : "bg-green-500"
+                      contact.isMutual ? "bg-blue-500" : "bg-orange-500"
                     }`}
                   >
-                    {contact.isFromContacts ? (
+                    {contact.isMutual ? (
                       <Users className="h-2.5 w-2.5 text-white" />
                     ) : (
-                      <Plus className="h-2.5 w-2.5 text-white" />
+                      <Shield className="h-2.5 w-2.5 text-white" />
                     )}
                   </div>
                 </div>
@@ -467,12 +506,19 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
                     <h3 className="font-semibold text-gray-900 dark:text-white truncate text-lg">{contact.name}</h3>
                     <span className="text-sm text-gray-500 dark:text-gray-400">{contact.timestamp}</span>
                   </div>
-                  <p className="text-gray-600 dark:text-gray-300 truncate">{contact.lastMessage}</p>
-                  {!contact.isFromContacts && (
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">New Contact</p>
+                  <p
+                    className={`truncate ${contact.isMutual ? "text-gray-600 dark:text-gray-300" : "text-orange-600 dark:text-orange-400 text-sm"}`}
+                  >
+                    {contact.lastMessage}
+                  </p>
+                  {!contact.isMutual && (
+                    <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      Waiting for them to add you back
+                    </p>
                   )}
                 </div>
-                {contact.unread > 0 && (
+                {contact.unread > 0 && contact.isMutual && (
                   <Badge className="bg-blue-500 dark:bg-blue-600 text-white text-sm min-w-[24px] h-6 rounded-full shadow-sm">
                     {contact.unread}
                   </Badge>
@@ -608,19 +654,31 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="relative">
-            <Avatar className="h-12 w-12 border-2 border-white/30 shadow-lg">
-              <AvatarFallback className="bg-white/20 backdrop-blur-sm text-white font-bold text-lg">
+            <Avatar className="h-12 w-12 shadow-sm">
+              <AvatarFallback
+                className={`font-bold ${
+                  selectedContact.isMutual
+                    ? "bg-gradient-to-br from-blue-100 to-purple-100 text-blue-700 dark:from-blue-900 dark:to-purple-900 dark:text-blue-300"
+                    : "bg-gradient-to-br from-orange-100 to-red-100 text-orange-700 dark:from-orange-900 dark:to-red-900 dark:text-orange-300"
+                }`}
+              >
                 {getInitials(selectedContact.name)}
               </AvatarFallback>
             </Avatar>
-            {selectedContact.online && (
+            {selectedContact.online && selectedContact.isMutual && (
               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 shadow-sm"></div>
             )}
-            {selectedContact.isFromContacts && (
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center shadow-sm">
+            <div
+              className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center shadow-sm ${
+                selectedContact.isMutual ? "bg-blue-500" : "bg-orange-500"
+              }`}
+            >
+              {selectedContact.isMutual ? (
                 <Users className="h-2 w-2 text-white" />
-              </div>
-            )}
+              ) : (
+                <Shield className="h-2 w-2 text-white" />
+              )}
+            </div>
           </div>
           <div className="flex-1">
             <h2
@@ -630,8 +688,11 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
               {selectedContact.name}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {selectedContact.online ? "Online" : "Last seen recently"}
-              {selectedContact.isFromContacts && " • From Contacts"}
+              {selectedContact.isMutual
+                ? selectedContact.online
+                  ? "Online"
+                  : "Last seen recently"
+                : "Not mutual contact - can't message"}
             </p>
           </div>
           <div className="flex gap-2">
@@ -642,7 +703,8 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
               onClick={() =>
                 handleStartCall(selectedContact.id, selectedContact.name, getInitials(selectedContact.name), "audio")
               }
-              className="h-10 w-10 p-0 rounded-xl hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-all duration-300"
+              disabled={!selectedContact.isMutual}
+              className="h-10 w-10 p-0 rounded-xl hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-all duration-300 disabled:opacity-50"
             >
               <Phone className="h-5 w-5" />
             </Button>
@@ -652,7 +714,8 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
               onClick={() =>
                 handleStartCall(selectedContact.id, selectedContact.name, getInitials(selectedContact.name), "video")
               }
-              className="h-10 w-10 p-0 rounded-xl hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-all duration-300"
+              disabled={!selectedContact.isMutual}
+              className="h-10 w-10 p-0 rounded-xl hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-all duration-300 disabled:opacity-50"
             >
               <Video className="h-5 w-5" />
             </Button>
@@ -661,7 +724,18 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {messages.length === 0 ? (
+          {!selectedContact.isMutual ? (
+            <div className="text-center py-16">
+              <div className="inline-flex p-6 bg-orange-50/80 dark:bg-orange-950/30 backdrop-blur-xl rounded-3xl mb-6 shadow-lg border border-orange-200/50 dark:border-orange-800/50">
+                <Shield className="h-12 w-12 text-orange-500" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Messaging Not Available</h3>
+              <p className="text-gray-500 dark:text-gray-400 text-lg max-w-md mx-auto leading-relaxed">
+                You can only message contacts who have also added you to their contacts. Ask {selectedContact.name} to
+                add your number ({userPhone}) to start messaging.
+              </p>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="text-center py-16">
               <div className="inline-flex p-6 bg-white/50 dark:bg-gray-800/50 backdrop-blur-xl rounded-3xl mb-6 shadow-lg border border-gray-200/50 dark:border-gray-700/50">
                 <MessageCircle className="h-12 w-12 text-gray-400" />
@@ -704,147 +778,149 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
         </div>
 
         {/* Message Input */}
-        <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl border-t border-gray-200/30 dark:border-gray-700/30">
-          {/* Upload Status Bar */}
-          <div
-            className={`transition-all duration-700 ease-out overflow-hidden ${
-              isUploading ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
-            }`}
-          >
-            <div className="p-5 bg-gradient-to-r from-blue-50/90 via-purple-50/90 to-indigo-50/90 dark:from-blue-950/40 dark:via-purple-950/40 dark:to-indigo-950/40 backdrop-blur-3xl border-b border-white/30 dark:border-gray-700/30 relative overflow-hidden">
-              <div className="absolute top-0 left-1/4 w-16 h-16 bg-blue-400/10 rounded-full blur-xl animate-pulse"></div>
-              <div className="absolute bottom-0 right-1/3 w-12 h-12 bg-purple-400/10 rounded-full blur-lg animate-pulse delay-500"></div>
+        {selectedContact.isMutual && (
+          <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl border-t border-gray-200/30 dark:border-gray-700/30">
+            {/* Upload Status Bar */}
+            <div
+              className={`transition-all duration-700 ease-out overflow-hidden ${
+                isUploading ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
+              }`}
+            >
+              <div className="p-5 bg-gradient-to-r from-blue-50/90 via-purple-50/90 to-indigo-50/90 dark:from-blue-950/40 dark:via-purple-950/40 dark:to-indigo-950/40 backdrop-blur-3xl border-b border-white/30 dark:border-gray-700/30 relative overflow-hidden">
+                <div className="absolute top-0 left-1/4 w-16 h-16 bg-blue-400/10 rounded-full blur-xl animate-pulse"></div>
+                <div className="absolute bottom-0 right-1/3 w-12 h-12 bg-purple-400/10 rounded-full blur-lg animate-pulse delay-500"></div>
 
-              <div className="flex items-center gap-5 relative z-10">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
-                      Uploading {uploadFileName}
-                    </span>
-                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-100/50 dark:bg-blue-900/30 px-2 py-1 rounded-lg backdrop-blur-sm">
-                      {Math.round(uploadProgress)}%
-                    </span>
-                  </div>
-
-                  <div className="relative h-3 bg-white/40 dark:bg-gray-800/40 rounded-full overflow-hidden backdrop-blur-xl border border-white/30 dark:border-gray-700/30 shadow-inner">
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
-                    <div className="absolute inset-0">
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-200/20 via-purple-200/20 to-blue-200/20 animate-pulse delay-300"></div>
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse delay-700"></div>
+                <div className="flex items-center gap-5 relative z-10">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
+                        Uploading {uploadFileName}
+                      </span>
+                      <span className="text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-100/50 dark:bg-blue-900/30 px-2 py-1 rounded-lg backdrop-blur-sm">
+                        {Math.round(uploadProgress)}%
+                      </span>
                     </div>
 
-                    <div
-                      className="absolute top-0 left-0 h-full rounded-full transition-all duration-500 ease-out shadow-2xl relative overflow-hidden"
-                      style={{
-                        width: `${uploadProgress}%`,
-                        background: `linear-gradient(135deg, 
-                          rgba(59, 130, 246, 0.95) 0%, 
-                          rgba(147, 51, 234, 0.95) 25%, 
-                          rgba(59, 130, 246, 0.95) 50%, 
-                          rgba(99, 102, 241, 0.95) 75%, 
-                          rgba(59, 130, 246, 0.95) 100%)`,
-                        boxShadow: `
-                          0 0 30px rgba(59, 130, 246, 0.6),
-                          inset 0 2px 0 rgba(255, 255, 255, 0.4),
-                          inset 0 -1px 0 rgba(0, 0, 0, 0.1),
-                          0 4px 15px rgba(59, 130, 246, 0.3)
-                        `,
-                      }}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-transparent rounded-full"></div>
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent rounded-full animate-pulse"></div>
-                      <div
-                        className="absolute top-0 right-0 w-12 h-full bg-gradient-to-l from-white/30 via-white/10 to-transparent rounded-full"
-                        style={{
-                          animation: "wave 2s ease-in-out infinite",
-                        }}
-                      ></div>
-                      <div className="absolute top-1 left-1/4 w-1 h-1 bg-white/60 rounded-full animate-ping"></div>
-                      <div className="absolute top-1 right-1/3 w-1 h-1 bg-white/60 rounded-full animate-ping delay-500"></div>
-                      <div
-                        className="absolute inset-0 rounded-full"
-                        style={{
-                          background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%)`,
-                          animation: "shimmer 3s ease-in-out infinite",
-                        }}
-                      ></div>
-                    </div>
+                    <div className="relative h-3 bg-white/40 dark:bg-gray-800/40 rounded-full overflow-hidden backdrop-blur-xl border border-white/30 dark:border-gray-700/30 shadow-inner">
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                      <div className="absolute inset-0">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-200/20 via-purple-200/20 to-blue-200/20 animate-pulse delay-300"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse delay-700"></div>
+                      </div>
 
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-black/10 rounded-full pointer-events-none"></div>
-                    <div className="absolute inset-0 rounded-full border border-blue-400/20 shadow-lg shadow-blue-500/20"></div>
-                  </div>
-                </div>
-
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500/20 to-purple-500/20 dark:from-blue-400/20 dark:to-purple-400/20 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-blue-500/30 dark:border-blue-400/30 shadow-lg relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-2xl animate-pulse"></div>
-                    <div className={`transition-all duration-500 relative z-10 ${isUploading ? "animate-spin" : ""}`}>
-                      <svg
-                        className="w-5 h-5 text-blue-600 dark:text-blue-400 drop-shadow-sm"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      <div
+                        className="absolute top-0 left-0 h-full rounded-full transition-all duration-500 ease-out shadow-2xl relative overflow-hidden"
+                        style={{
+                          width: `${uploadProgress}%`,
+                          background: `linear-gradient(135deg, 
+                            rgba(59, 130, 246, 0.95) 0%, 
+                            rgba(147, 51, 234, 0.95) 25%, 
+                            rgba(59, 130, 246, 0.95) 50%, 
+                            rgba(99, 102, 241, 0.95) 75%, 
+                            rgba(59, 130, 246, 0.95) 100%)`,
+                          boxShadow: `
+                            0 0 30px rgba(59, 130, 246, 0.6),
+                            inset 0 2px 0 rgba(255, 255, 255, 0.4),
+                            inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+                            0 4px 15px rgba(59, 130, 246, 0.3)
+                          `,
+                        }}
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2.5}
-                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                        />
-                      </svg>
+                        <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-transparent rounded-full"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent rounded-full animate-pulse"></div>
+                        <div
+                          className="absolute top-0 right-0 w-12 h-full bg-gradient-to-l from-white/30 via-white/10 to-transparent rounded-full"
+                          style={{
+                            animation: "wave 2s ease-in-out infinite",
+                          }}
+                        ></div>
+                        <div className="absolute top-1 left-1/4 w-1 h-1 bg-white/60 rounded-full animate-ping"></div>
+                        <div className="absolute top-1 right-1/3 w-1 h-1 bg-white/60 rounded-full animate-ping delay-500"></div>
+                        <div
+                          className="absolute inset-0 rounded-full"
+                          style={{
+                            background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%)`,
+                            animation: "shimmer 3s ease-in-out infinite",
+                          }}
+                        ></div>
+                      </div>
+
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-black/10 rounded-full pointer-events-none"></div>
+                      <div className="absolute inset-0 rounded-full border border-blue-400/20 shadow-lg shadow-blue-500/20"></div>
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent rounded-2xl pointer-events-none"></div>
+                  </div>
+
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500/20 to-purple-500/20 dark:from-blue-400/20 dark:to-purple-400/20 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-blue-500/30 dark:border-blue-400/30 shadow-lg relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-2xl animate-pulse"></div>
+                      <div className={`transition-all duration-500 relative z-10 ${isUploading ? "animate-spin" : ""}`}>
+                        <svg
+                          className="w-5 h-5 text-blue-600 dark:text-blue-400 drop-shadow-sm"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2.5}
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                          />
+                        </svg>
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent rounded-2xl pointer-events-none"></div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <style jsx>{`
-            @keyframes wave {
-              0%, 100% { transform: translateX(0) scaleX(1); }
-              50% { transform: translateX(-10px) scaleX(1.1); }
-            }
-            
-            @keyframes shimmer {
-              0% { transform: translateX(-100%); }
-              100% { transform: translateX(100%); }
-            }
-          `}</style>
+            <style jsx>{`
+              @keyframes wave {
+                0%, 100% { transform: translateX(0) scaleX(1); }
+                50% { transform: translateX(-10px) scaleX(1.1); }
+              }
+              
+              @keyframes shimmer {
+                0% { transform: translateX(-100%); }
+                100% { transform: translateX(100%); }
+              }
+            `}</style>
 
-          {/* Message Input Area */}
-          <div className="p-6">
-            <div className="flex gap-4">
-              <Input
-                placeholder="Type a message..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="flex-1 h-14 bg-gray-50/50 dark:bg-gray-800/50 border-gray-200/50 dark:border-gray-700/50 focus:border-blue-500 dark:focus:border-blue-400 rounded-3xl backdrop-blur-sm text-lg transition-all duration-300"
-              />
-
-              <div className="relative">
-                <input
-                  type="file"
-                  onChange={handleFileUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+            {/* Message Input Area */}
+            <div className="p-6">
+              <div className="flex gap-4">
+                <Input
+                  placeholder="Type a message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="flex-1 h-14 bg-gray-50/50 dark:bg-gray-800/50 border-gray-200/50 dark:border-gray-700/50 focus:border-blue-500 dark:focus:border-blue-400 rounded-3xl backdrop-blur-sm text-lg transition-all duration-300"
                 />
-                <Button className="h-14 w-14 bg-gray-100/80 hover:bg-gray-200/80 dark:bg-gray-800/80 dark:hover:bg-gray-700/80 rounded-3xl shadow-lg p-0 transition-all duration-300 transform hover:scale-105 active:scale-95 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
-                  <Plus className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+
+                <div className="relative">
+                  <input
+                    type="file"
+                    onChange={handleFileUpload}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+                  />
+                  <Button className="h-14 w-14 bg-gray-100/80 hover:bg-gray-200/80 dark:bg-gray-800/80 dark:hover:bg-gray-700/80 rounded-3xl shadow-lg p-0 transition-all duration-300 transform hover:scale-105 active:scale-95 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+                    <Plus className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                  </Button>
+                </div>
+
+                <Button
+                  onClick={sendMessage}
+                  disabled={!newMessage.trim()}
+                  className="h-14 w-14 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 rounded-3xl shadow-lg shadow-blue-500/25 dark:shadow-blue-500/20 p-0 transition-all duration-300 transform hover:scale-105 active:scale-95"
+                >
+                  <Send className="h-5 w-5" />
                 </Button>
               </div>
-
-              <Button
-                onClick={sendMessage}
-                disabled={!newMessage.trim()}
-                className="h-14 w-14 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 rounded-3xl shadow-lg shadow-blue-500/25 dark:shadow-blue-500/20 p-0 transition-all duration-300 transform hover:scale-105 active:scale-95"
-              >
-                <Send className="h-5 w-5" />
-              </Button>
             </div>
           </div>
-        </div>
+        )}
       </div>
     )
   }
@@ -911,14 +987,26 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
               </span>
             </div>
             {activeTab === "chats" && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300"
-                onClick={() => setShowNewChat(true)}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/30 transition-all duration-300"
+                  onClick={() => setShowAddContact(true)}
+                  title="Add from Hey users"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300"
+                  onClick={() => setShowNewChat(true)}
+                  title="Add by phone number"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -995,6 +1083,68 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
           </div>
         </div>
 
+        {/* Add Contact Modal */}
+        {showAddContact && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 w-full max-w-md max-h-[80vh] overflow-hidden">
+              <div className="p-6 border-b border-gray-200/50 dark:border-gray-700/50">
+                <div className="flex items-center justify-between">
+                  <h3
+                    className="text-xl font-bold text-gray-900 dark:text-white"
+                    style={{ fontFamily: "SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif" }}
+                  >
+                    Add Contact
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAddContact(false)}
+                    className="h-8 w-8 p-0 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    ✕
+                  </Button>
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 mt-2">Add people who are already using Hey</p>
+              </div>
+
+              <div className="p-6 max-h-96 overflow-y-auto">
+                <div className="space-y-3">
+                  {filteredGlobalUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition-all duration-300"
+                    >
+                      <Avatar className="h-12 w-12 shadow-sm">
+                        <AvatarFallback className="bg-gradient-to-br from-blue-100 to-purple-100 text-blue-700 dark:from-blue-900 dark:to-purple-900 dark:text-blue-300 font-bold">
+                          {getInitials(user.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-900 dark:text-white">{user.name}</h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{user.phone}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          {user.online ? "Online" : user.lastSeen}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => addToContacts(user.id)}
+                        className="h-10 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-xl shadow-sm transition-all duration-300"
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  ))}
+                  {filteredGlobalUsers.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 dark:text-gray-400">No new users found</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* New Chat Modal */}
         {showNewChat && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1005,7 +1155,7 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
                     className="text-xl font-bold text-gray-900 dark:text-white"
                     style={{ fontFamily: "SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif" }}
                   >
-                    New Chat
+                    Add by Phone
                   </h3>
                   <Button
                     variant="ghost"
@@ -1020,7 +1170,7 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
                     ✕
                   </Button>
                 </div>
-                <p className="text-gray-600 dark:text-gray-400 mt-2">Start a conversation with someone new</p>
+                <p className="text-gray-600 dark:text-gray-400 mt-2">Add someone by their phone number</p>
               </div>
 
               <div className="p-6 space-y-6">
@@ -1069,7 +1219,7 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
                     className="flex-1 h-12 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-blue-500/25 dark:shadow-blue-500/20 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
                     disabled={!newChatPhone.trim() || !newChatName.trim()}
                   >
-                    Start Chat
+                    Add Contact
                   </Button>
                 </div>
               </div>
@@ -1094,9 +1244,9 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
               Welcome to Hey
             </h3>
             <p className="text-gray-500 dark:text-gray-400 max-w-md text-lg leading-relaxed">
-              {activeTab === "chats" && "Select a contact to start a beautiful conversation"}
+              {activeTab === "chats" && "Select a contact to start a secure conversation"}
               {activeTab === "status" && "View and share status updates with your contacts"}
-              {activeTab === "calls" && "Make calls and view your call history"}
+              {activeTab === "calls" && "Make calls with your mutual contacts"}
             </p>
           </div>
         </div>
