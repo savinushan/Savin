@@ -1,0 +1,39 @@
+{
+  "name": "hi-chat-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@radix-ui/react-avatar": "latest",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cors": "latest",
+    "express": "latest",
+    "http": "latest",
+    "lucide-react": "^0.454.0",
+    "next": "14.2.16",
+    "react": "^18",
+    "react-dom": "^18",
+    "socket.io": "latest",
+    "socket.io-client": "latest",
+    "tailwind-merge": "^2.5.5",
+    "tailwindcss": "^3.3.0",
+    "tailwindcss-animate": "^1.0.7",
+    "twilio": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.0.0",
+    "postcss": "^8.5",
+    "typescript": "^5"
+  }
+}
