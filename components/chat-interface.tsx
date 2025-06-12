@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { CallInterface } from "@/components/call-interface"
 
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
@@ -232,6 +233,14 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
 
   const [activeTab, setActiveTab] = useState<"chats" | "status" | "calls">("chats")
 
+  const [activeCall, setActiveCall] = useState<{
+    contactId: string
+    contactName: string
+    contactAvatar: string
+    callType: "audio" | "video"
+    isIncoming: boolean
+  } | null>(null)
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
@@ -239,6 +248,17 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    if (activeTab === "calls" && !activeCall) {
+      const timer = setTimeout(() => {
+        if (activeTab === "calls" && !activeCall) {
+          handleIncomingCall("incoming-1", "Kasun Perera", "KP", "audio")
+        }
+      }, 10000)
+      return () => clearTimeout(timer)
+    }
+  }, [activeTab, activeCall])
 
   const filteredContacts = phoneContacts.filter(
     (contact) => contact.name.toLowerCase().includes(searchQuery.toLowerCase()) || contact.phone.includes(searchQuery),
@@ -295,6 +315,40 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
     if (file) {
       simulateUpload(file.name)
     }
+  }
+
+  const handleStartCall = (
+    contactId: string,
+    contactName: string,
+    contactAvatar: string,
+    callType: "audio" | "video",
+  ) => {
+    setActiveCall({
+      contactId,
+      contactName,
+      contactAvatar,
+      callType,
+      isIncoming: false,
+    })
+  }
+
+  const handleIncomingCall = (
+    contactId: string,
+    contactName: string,
+    contactAvatar: string,
+    callType: "audio" | "video",
+  ) => {
+    setActiveCall({
+      contactId,
+      contactName,
+      contactAvatar,
+      callType,
+      isIncoming: true,
+    })
+  }
+
+  const handleEndCall = () => {
+    setActiveCall(null)
   }
 
   const getInitials = (name: string) => {
@@ -509,6 +563,7 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={() => handleStartCall(call.id, call.name, call.avatar, "audio")}
                       className="h-8 w-8 p-0 rounded-full hover:bg-green-50 dark:hover:bg-green-900/30"
                     >
                       <Phone className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -553,8 +608,8 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="relative">
-            <Avatar className="h-12 w-12 shadow-sm">
-              <AvatarFallback className="bg-gradient-to-br from-blue-100 to-purple-100 text-blue-700 dark:from-blue-900 dark:to-purple-900 dark:text-blue-300 font-bold">
+            <Avatar className="h-12 w-12 border-2 border-white/30 shadow-lg">
+              <AvatarFallback className="bg-white/20 backdrop-blur-sm text-white font-bold text-lg">
                 {getInitials(selectedContact.name)}
               </AvatarFallback>
             </Avatar>
@@ -584,6 +639,9 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
             <Button
               variant="ghost"
               size="sm"
+              onClick={() =>
+                handleStartCall(selectedContact.id, selectedContact.name, getInitials(selectedContact.name), "audio")
+              }
               className="h-10 w-10 p-0 rounded-xl hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-all duration-300"
             >
               <Phone className="h-5 w-5" />
@@ -591,6 +649,9 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
             <Button
               variant="ghost"
               size="sm"
+              onClick={() =>
+                handleStartCall(selectedContact.id, selectedContact.name, getInitials(selectedContact.name), "video")
+              }
               className="h-10 w-10 p-0 rounded-xl hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-all duration-300"
             >
               <Video className="h-5 w-5" />
@@ -1040,6 +1101,21 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
           </div>
         </div>
       </div>
+
+      {/* Call Interface */}
+      {activeCall && (
+        <CallInterface
+          contactName={activeCall.contactName}
+          contactAvatar={activeCall.contactAvatar}
+          callType={activeCall.callType}
+          onEndCall={handleEndCall}
+          isIncoming={activeCall.isIncoming}
+          onAccept={() => {
+            // Handle call acceptance
+          }}
+          onReject={handleEndCall}
+        />
+      )}
     </div>
   )
 }
