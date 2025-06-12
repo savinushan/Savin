@@ -1,12 +1,17 @@
 {
-  "name": "hi-chat-app",
-  "version": "0.1.0",
+  "name": "hey-chat-app",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "export": "next export",
+    "electron": "electron .",
+    "electron-dev": "ELECTRON_IS_DEV=1 electron .",
+    "electron-pack": "electron-builder",
+    "deploy": "npm run build && npm run export"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "latest",
@@ -17,6 +22,7 @@
     "http": "latest",
     "lucide-react": "^0.454.0",
     "next": "14.2.16",
+    "path": "latest",
     "react": "^18",
     "react-dom": "^18",
     "socket.io": "latest",
@@ -31,9 +37,34 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
     "eslint": "^8",
     "eslint-config-next": "14.0.0",
     "postcss": "^8.5",
     "typescript": "^5"
+  },
+  "main": "public/electron.js",
+  "homepage": "./",
+  "build": {
+    "appId": "com.heychat.app",
+    "productName": "Hey Chat",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "build/**/*",
+      "node_modules/**/*",
+      "public/electron.js"
+    ],
+    "mac": {
+      "category": "public.app-category.social-networking"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }
