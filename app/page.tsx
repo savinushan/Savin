@@ -1,80 +1,83 @@
 "use client"
-import { useState, useEffect, useRef } from "react"
-import type { Socket } from "socket.io-client"
+import { useState, useEffect } from "react"
 import { PhoneAuth } from "@/components/phone-auth"
-import { ChatInterface } from "@/components/chat-interface"
-
-interface Message {
-  id: string
-  username: string
-  message: string
-  timestamp: Date
-  color: string
-}
-
-interface User {
-  id: string
-  username: string
-  color: string
-}
-
-const colors = [
-  "bg-blue-500",
-  "bg-green-500",
-  "bg-purple-500",
-  "bg-pink-500",
-  "bg-yellow-500",
-  "bg-indigo-500",
-  "bg-red-500",
-  "bg-teal-500",
-]
+import { ContactSyncInterface } from "@/components/contact-sync-interface"
+import { MutualContactChat } from "@/components/mutual-contact-chat"
+import type { ContactInfo } from "@/lib/contact-verification-service"
 
 export default function HiChatApp() {
-  const [socket, setSocket] = useState<Socket | null>(null)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [users, setUsers] = useState<User[]>([])
-  const [username, setUsername] = useState("")
-  const [currentMessage, setCurrentMessage] = useState("")
-  const [isConnected, setIsConnected] = useState(false)
-  const [userColor, setUserColor] = useState("")
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authStep, setAuthStep] = useState<"auth" | "sync" | "chat">("auth")
   const [userPhone, setUserPhone] = useState("")
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [userName, setUserName] = useState("")
+  const [contacts, setContacts] = useState<ContactInfo[]>([])
 
   useEffect(() => {
     // Check if user is already authenticated
     const savedAuth = localStorage.getItem("hi-chat-auth")
     const savedPhone = localStorage.getItem("hi-chat-phone")
     const savedName = localStorage.getItem("hi-chat-name")
+    const savedContacts = localStorage.getItem("hi-chat-contacts")
 
     if (savedAuth && savedPhone && savedName) {
-      setIsAuthenticated(true)
       setUserPhone(savedPhone)
-      setUsername(savedName)
+      setUserName(savedName)
+
+      if (savedContacts) {
+        const parsedContacts = JSON.parse(savedContacts)
+        setContacts(parsedContacts)
+        setAuthStep("chat")
+      } else {
+        setAuthStep("sync")
+      }
     }
   }, [])
 
   const handleAuthSuccess = (phone: string, name: string) => {
-    setIsAuthenticated(true)
     setUserPhone(phone)
-    setUsername(name)
+    setUserName(name)
     localStorage.setItem("hi-chat-auth", "true")
     localStorage.setItem("hi-chat-phone", phone)
     localStorage.setItem("hi-chat-name", name)
+    setAuthStep("sync")
+  }
+
+  const handleSyncComplete = (syncedContacts: ContactInfo[]) => {
+    setContacts(syncedContacts)
+    localStorage.setItem("hi-chat-contacts", JSON.stringify(syncedContacts))
+    setAuthStep("chat")
+  }
+
+  const handleResyncContacts = () => {
+    localStorage.removeItem("hi-chat-contacts")
+    setAuthStep("sync")
   }
 
   const handleLogout = () => {
-    setIsAuthenticated(false)
+    setAuthStep("auth")
     setUserPhone("")
-    setUsername("")
+    setUserName("")
+    setContacts([])
     localStorage.removeItem("hi-chat-auth")
     localStorage.removeItem("hi-chat-phone")
     localStorage.removeItem("hi-chat-name")
+    localStorage.removeItem("hi-chat-contacts")
   }
 
-  if (!isAuthenticated) {
+  if (authStep === "auth") {
     return <PhoneAuth onAuthSuccess={handleAuthSuccess} />
   }
 
-  return <ChatInterface userPhone={userPhone} userName={username} onLogout={handleLogout} />
+  if (authStep === "sync") {
+    return <ContactSyncInterface userPhone={userPhone} userName={userName} onSyncComplete={handleSyncComplete} />
+  }
+
+  return (
+    <MutualContactChat
+      userPhone={userPhone}
+      userName={userName}
+      contacts={contacts}
+      onLogout={handleLogout}
+      onResyncContacts={handleResyncContacts}
+    />
+  )
 }
