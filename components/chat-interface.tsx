@@ -575,55 +575,103 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
       {/* Message Input */}
       <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl border-t border-gray-200/30 dark:border-gray-700/30">
         {/* Upload Status Bar */}
+        {/* Enhanced Liquid Glass Upload Status Bar */}
         <div
-          className={`transition-all duration-500 ease-out overflow-hidden ${isUploading ? "max-h-20 opacity-100" : "max-h-0 opacity-0"}`}
+          className={`transition-all duration-700 ease-out overflow-hidden ${
+            isUploading ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
+          }`}
         >
-          <div className="p-4 bg-gradient-to-r from-blue-50/80 via-purple-50/80 to-blue-50/80 dark:from-blue-950/30 dark:via-purple-950/30 dark:to-blue-950/30 backdrop-blur-xl border-b border-white/20 dark:border-gray-700/20">
-            <div className="flex items-center gap-4">
+          <div className="p-5 bg-gradient-to-r from-blue-50/90 via-purple-50/90 to-indigo-50/90 dark:from-blue-950/40 dark:via-purple-950/40 dark:to-indigo-950/40 backdrop-blur-3xl border-b border-white/30 dark:border-gray-700/30 relative overflow-hidden">
+            {/* Floating Orbs Background */}
+            <div className="absolute top-0 left-1/4 w-16 h-16 bg-blue-400/10 rounded-full blur-xl animate-pulse"></div>
+            <div className="absolute bottom-0 right-1/3 w-12 h-12 bg-purple-400/10 rounded-full blur-lg animate-pulse delay-500"></div>
+
+            <div className="flex items-center gap-5 relative z-10">
               <div className="flex-1">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
                     Uploading {uploadFileName}
                   </span>
-                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                  <span className="text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-100/50 dark:bg-blue-900/30 px-2 py-1 rounded-lg backdrop-blur-sm">
                     {Math.round(uploadProgress)}%
                   </span>
                 </div>
 
-                {/* Liquid Glass Progress Bar */}
-                <div className="relative h-2 bg-white/30 dark:bg-gray-800/30 rounded-full overflow-hidden backdrop-blur-sm border border-white/20 dark:border-gray-700/20 shadow-inner">
-                  {/* Animated Background Shimmer */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
+                {/* Ultra Liquid Glass Progress Bar */}
+                <div className="relative h-3 bg-white/40 dark:bg-gray-800/40 rounded-full overflow-hidden backdrop-blur-xl border border-white/30 dark:border-gray-700/30 shadow-inner">
+                  {/* Animated Background Pattern */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
 
-                  {/* Progress Fill with Liquid Effect */}
-                  <div
-                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500/90 via-purple-500/90 to-blue-600/90 dark:from-blue-400/90 dark:via-purple-400/90 dark:to-blue-500/90 rounded-full transition-all duration-300 ease-out shadow-lg"
-                    style={{
-                      width: `${uploadProgress}%`,
-                      boxShadow: "0 0 20px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)",
-                    }}
-                  >
-                    {/* Liquid Glass Highlight */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent rounded-full"></div>
-
-                    {/* Moving Shimmer Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent rounded-full animate-pulse"></div>
-
-                    {/* Flowing Animation */}
-                    <div className="absolute top-0 right-0 w-8 h-full bg-gradient-to-l from-white/20 to-transparent rounded-full animate-pulse"></div>
+                  {/* Multiple Layer Background Shimmer */}
+                  <div className="absolute inset-0">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-200/20 via-purple-200/20 to-blue-200/20 animate-pulse delay-300"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse delay-700"></div>
                   </div>
 
-                  {/* Glass Reflection */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/5 rounded-full pointer-events-none"></div>
+                  {/* Main Progress Fill with Enhanced Liquid Effect */}
+                  <div
+                    className="absolute top-0 left-0 h-full rounded-full transition-all duration-500 ease-out shadow-2xl relative overflow-hidden"
+                    style={{
+                      width: `${uploadProgress}%`,
+                      background: `linear-gradient(135deg, 
+                        rgba(59, 130, 246, 0.95) 0%, 
+                        rgba(147, 51, 234, 0.95) 25%, 
+                        rgba(59, 130, 246, 0.95) 50%, 
+                        rgba(99, 102, 241, 0.95) 75%, 
+                        rgba(59, 130, 246, 0.95) 100%)`,
+                      boxShadow: `
+                        0 0 30px rgba(59, 130, 246, 0.6),
+                        inset 0 2px 0 rgba(255, 255, 255, 0.4),
+                        inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+                        0 4px 15px rgba(59, 130, 246, 0.3)
+                      `,
+                    }}
+                  >
+                    {/* Top Glass Highlight */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-transparent rounded-full"></div>
+
+                    {/* Flowing Liquid Animation */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent rounded-full animate-pulse"></div>
+
+                    {/* Moving Wave Effect */}
+                    <div
+                      className="absolute top-0 right-0 w-12 h-full bg-gradient-to-l from-white/30 via-white/10 to-transparent rounded-full"
+                      style={{
+                        animation: "wave 2s ease-in-out infinite",
+                      }}
+                    ></div>
+
+                    {/* Liquid Bubble Effects */}
+                    <div className="absolute top-1 left-1/4 w-1 h-1 bg-white/60 rounded-full animate-ping"></div>
+                    <div className="absolute top-1 right-1/3 w-1 h-1 bg-white/60 rounded-full animate-ping delay-500"></div>
+
+                    {/* Edge Glow */}
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%)`,
+                        animation: "shimmer 3s ease-in-out infinite",
+                      }}
+                    ></div>
+                  </div>
+
+                  {/* Overall Glass Reflection */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-black/10 rounded-full pointer-events-none"></div>
+
+                  {/* Outer Glow Ring */}
+                  <div className="absolute inset-0 rounded-full border border-blue-400/20 shadow-lg shadow-blue-500/20"></div>
                 </div>
               </div>
 
-              {/* Upload Icon with Animation */}
+              {/* Enhanced Upload Icon with Liquid Animation */}
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-500/20 dark:bg-blue-400/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-blue-500/30 dark:border-blue-400/30">
-                  <div className={`transition-transform duration-300 ${isUploading ? "animate-spin" : ""}`}>
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500/20 to-purple-500/20 dark:from-blue-400/20 dark:to-purple-400/20 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-blue-500/30 dark:border-blue-400/30 shadow-lg relative overflow-hidden">
+                  {/* Icon Background Glow */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-2xl animate-pulse"></div>
+
+                  <div className={`transition-all duration-500 relative z-10 ${isUploading ? "animate-spin" : ""}`}>
                     <svg
-                      className="w-4 h-4 text-blue-600 dark:text-blue-400"
+                      className="w-5 h-5 text-blue-600 dark:text-blue-400 drop-shadow-sm"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -631,16 +679,31 @@ export function ChatInterface({ userPhone, userName, onLogout }: ChatInterfacePr
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        strokeWidth={2}
+                        strokeWidth={2.5}
                         d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                       />
                     </svg>
                   </div>
+
+                  {/* Icon Highlight */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent rounded-2xl pointer-events-none"></div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        <style jsx>{`
+          @keyframes wave {
+            0%, 100% { transform: translateX(0) scaleX(1); }
+            50% { transform: translateX(-10px) scaleX(1.1); }
+          }
+          
+          @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+        `}</style>
 
         {/* Message Input Area */}
         <div className="p-6">
